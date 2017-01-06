@@ -1,0 +1,151 @@
+<html>
+
+<head>
+
+    <script src="https://player.vimeo.com/api/player.js"></script>
+</head>
+
+<body>
+<div id="vimeo_player"></div>
+<script>
+        var videos = ["177237133","189750813","188830438","183609814","187604216","185291484","187819553","187094433","160797307","174417616"];
+        var options = {
+            id: videos[Math.floor((Math.random() * 10) + 1)],
+            width: 400,
+            loop: false,
+            autoplay: true
+        };
+        var player = new Vimeo.Player('vimeo_player', options);
+        //https://www.npmjs.com/package/@vimeo/player
+        //player.play();
+
+        var duration;
+        var currentTime;
+
+        var count = 0;
+        var isStopped; //for checking whether the video is stopped or not.
+
+
+
+        var dmExtPlayer, videoUrl, videoDuration, mcs_timer;
+        var playerSlider, leftTime, sc, progressC, progressB;
+        var playerState = "NA",
+            playbackQuality = "NA",
+            playbackRate = "NA";
+        var hasPlayer = false,
+            mcs_timerInterval = 500;
+
+        // variables to store progress and label and Video length
+        var label, completed, buffered;
+
+        // try getting Netflix player every 50ms
+
+
+        add_handles();
+        hasPlayer = true;
+
+        function resetTimer() {
+            clearTimer();
+            mcs_timer = setInterval(messageContentScript, mcs_timerInterval);
+            console.log(mcs_timerInterval);
+        }
+
+        function clearTimer() {
+            if (mcs_timer) {
+                clearInterval(mcs_timer);
+            }
+        }
+        console.log("Start_Time : " + Date.now() / 1000);
+
+        // listen to the onHasPlayer event, and add event handle
+        // to the miscellaneous player events dispatched by Youtube API
+        document.addEventListener("onHasPlayer", function() {
+            add_handles();
+            hasPlayer = true;
+        }, false);
+
+        function add_handles() {
+            init();
+        }
+
+        // functions used by handles
+        function init() {
+            logOnce();
+            resetTimer();
+            console.log("yes video!");
+        }
+        var temp_dur = '0';
+        var temp_quality = '0';
+        var temp_currentTime = '0';
+        var temp_url = '0';
+        var temp_buffer = '0';
+        // log once to the youtube table in the server db
+        // about the basic video info per video play
+        function logOnce() {
+            Promise.all([player.getDuration(), player.getCurrentTime()]).then(function(dimensions) {
+                temp_dur = dimensions[0];
+                temp_currentTime = dimensions[1];
+            });
+            var obj = player.on('progress', function(data, id) {
+                temp_buffer = data.seconds;
+            });
+            player.getVideoHeight().then(function(height) {
+                // height = the height of the video that is currently playing
+                temp_quality = height;
+            }).catch(function(error) {
+                // an error occurred
+            });
+
+
+            var realTime = new Date().getTime() / 1000;
+            console.log("FROM_INJECTED_ONCE," + realTime + ',' + temp_dur + ',' + temp_currentTime + ',' + temp_buffer + ',' + temp_quality);
+
+
+            messageContentScript();
+        }
+
+        // being called repetitively by timer to log the real time streaming
+        function messageContentScript() {
+            // get time from youtube time bar;
+
+            var realTime = new Date().getTime() / 1000;
+            Promise.all([player.getDuration(), player.getCurrentTime()]).then(function(dimensions) {
+                temp_dur = dimensions[0];
+                temp_currentTime = dimensions[1];
+            });
+            var obj = player.on('progress', function(data, id) {
+                temp_buffer = data.seconds;
+            });
+            player.getVideoHeight().then(function(height) {
+                // height = the height of the video that is currently playing
+                temp_quality = height;
+            }).catch(function(error) {
+                // an error occurred
+            });
+
+            player.getEnded().then(function(ended) {
+                isStopped = ended; // ended = whether or not the video has ended
+            }).catch(function(error) {
+                // an error occurred
+            });
+
+            if (count == 1) {
+                return;
+            }
+            if (isStopped) {
+                console.log("End Time: " + Date.now() / 1000);
+                count = 1;
+            }
+
+            var now = new Date().getTime();
+            while (new Date().getTime() < now + 10) {
+
+            }
+
+            console.log("FROM_INJECTED_REPEAT," + realTime + ',' + temp_dur + ',' + temp_currentTime + ',' + temp_buffer + ',' + temp_quality);
+
+        }
+    </script>
+</body>
+
+</html>
